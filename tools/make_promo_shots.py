@@ -10,6 +10,8 @@
 用法：python tools/make_promo_shots.py
 """
 
+import io
+import json
 import os
 import sys
 import time
@@ -38,6 +40,8 @@ store.save_config(cfg)
 
 paths.seed_prompts()
 templates.ensure_defaults()
+
+import tkinter as tk
 
 from ui import theme                              # noqa: E402
 theme.enable_dpi()
@@ -140,6 +144,40 @@ def main():
     win._on_send()
     pump(win, 1.6)
     save(win, "ask.png")
+
+    # 记录「就这些，开始吧」按钮在整窗截图里的相对位置（给宣传片做点击演示用）
+    win.update_idletasks()
+    wx, wy = win.winfo_rootx(), win.winfo_rooty()
+    ww, wh = win.winfo_width(), win.winfo_height()
+    found = []
+
+    def scan(w):
+        try:
+            label = getattr(w, "_text", None)
+            if label is None:
+                try:
+                    label = w.cget("text")
+                except tk.TclError:
+                    label = None
+            if str(label) == "就这些，开始吧":
+                found.append(w)
+            for c in w.winfo_children():
+                scan(c)
+        except tk.TclError:
+            pass
+
+    scan(win)
+    hit = found[0] if found else None
+    if hit is not None:
+        cx = hit.winfo_rootx() - wx + hit.winfo_width() / 2
+        cy = hit.winfo_rooty() - wy + hit.winfo_height() / 2
+        meta = {"skip_rel": [round(cx / ww, 4), round(cy / wh, 4)],
+                "size": [ww, wh]}
+        io.open(os.path.join(OUT, "ask.json"), "w", encoding="utf-8").write(
+            json.dumps(meta, ensure_ascii=False))
+        print("skip button rel:", meta["skip_rel"])
+    else:
+        print("skip button not found")
 
     # 按界面真实路径作答：「就这些，开始吧」→ 出结果
     win._input.focus_force()
