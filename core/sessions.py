@@ -3,8 +3,11 @@
 一个任务 = 一次完整对话：你说了什么、它问了什么、最后给的提示词。
 左侧每个场景下面挂若干任务，可以新建、重命名、删除。
 
-存 data_dir/tasks.json。timeline 是为「点回旧任务能原样恢复界面」准备的，
-只存必要的结构，不存中间态。
+存「文档\轻提\tasks.json」（见 paths.history_dir），刻意不放在安装目录、
+也不放在 %LOCALAPPDATA%\轻提：重装或升级版本时历史不会跟着被清掉。
+
+老版本把记录写在 %LOCALAPPDATA%\轻提\tasks.json，首次启动会自动迁移过来，
+原文件改名成 tasks.json.migrated 留个底。
 """
 
 import json
@@ -24,7 +27,38 @@ DEFAULT = {"tasks": [], "collapsed": {}, "active": ""}
 
 
 def _path() -> str:
+    return os.path.join(paths.history_dir(), FILE_NAME)
+
+
+def legacy_path() -> str:
+    """上一版存记录的地方。"""
     return os.path.join(paths.data_dir(), FILE_NAME)
+
+
+def migrate_legacy() -> bool:
+    """把老位置的历史搬到新位置，返回是否发生了迁移。
+
+    只在「新位置还没有文件、老位置有文件」时动手，绝不覆盖已有记录。
+    """
+    try:
+        new, old = _path(), legacy_path()
+        if os.path.abspath(new) == os.path.abspath(old):
+            return False
+        if os.path.isfile(new) or not os.path.isfile(old):
+            return False
+        with open(old, "rb") as f:
+            blob = f.read()
+        tmp = new + ".tmp"
+        with open(tmp, "wb") as f:
+            f.write(blob)
+        os.replace(tmp, new)
+        try:
+            os.replace(old, old + ".migrated")
+        except OSError:
+            pass
+        return True
+    except OSError:
+        return False
 
 
 def load() -> dict:

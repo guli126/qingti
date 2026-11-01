@@ -15,7 +15,9 @@ import tempfile
 
 
 def isolate() -> str:
+    """配置目录、聊天记录目录一起指到临时目录，测试绝不碰用户真实数据。"""
     d = tempfile.mkdtemp(prefix="qingti-test-")
     os.environ["LOCALAPPDATA"] = d
+    os.environ["QINGTI_HISTORY_DIR"] = os.path.join(d, "轻提-历史")
     atexit.register(shutil.rmtree, d, True)
     return os.path.join(d, "轻提")

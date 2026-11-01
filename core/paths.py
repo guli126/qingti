@@ -47,6 +47,31 @@ def data_dir() -> str:
         return d
 
 
+def user_docs_dir() -> str:
+    """用户的「文档」目录（有 OneDrive 就跟着走，没有就退回 ~）。"""
+    base = os.environ.get("USERPROFILE") or os.path.expanduser("~")
+    for name in ("Documents", "文档"):
+        d = os.path.join(base, name)
+        if os.path.isdir(d):
+            return d
+    return base
+
+
+def history_dir() -> str:
+    """会话记录单独放「文档\轻提」，跟安装目录、跟程序数据目录都不在一处。
+
+    这样卸载/覆盖安装新版本、清 %LOCALAPPDATA%\轻提，都不会把聊天记录带走；
+    用户想备份，直接去文档里拷一个 tasks.json 就行。
+    """
+    override = os.environ.get("QINGTI_HISTORY_DIR")
+    d = override or os.path.join(user_docs_dir(), APP_NAME)
+    try:
+        os.makedirs(d, exist_ok=True)
+        return d
+    except OSError:
+        return data_dir()
+
+
 def web_dir() -> str:
     """静态页面：外置优先（方便改样式），否则读 exe 内部。"""
     for d in (os.path.join(app_dir(), "web"), os.path.join(bundle_dir(), "web")):

@@ -57,7 +57,8 @@ def main():
     # 首次运行把出厂模板释放到 exe 旁边，之后归用户所有
     paths.seed_prompts()
 
-    from core import templates
+    from core import sessions, templates
+    sessions.migrate_legacy()     # 老版本的历史搬去「文档\轻提」，别留在配置目录里
     templates.ensure_defaults()
 
     from ui import theme

@@ -316,6 +316,36 @@ class RoundCard(tk.Canvas):
 # ------------------------------------------------------------------ 滚动区
 
 
+_WHEEL_FRAMES = []
+_WHEEL_HOOKED = False
+
+
+def _wheel_target(event):
+    """指针下面真正是哪个控件——用坐标问，不依赖 <Enter> 事件。"""
+    widget = getattr(event, "widget", None)
+    try:
+        under = widget.winfo_containing(event.x_root, event.y_root)
+        if under is not None:
+            widget = under
+    except (tk.TclError, AttributeError):
+        pass
+    return widget
+
+
+def _wheel_dispatch(event):
+    """全局滚轮：谁在指针下面，就滚谁，不需要先点一下。"""
+    node = _wheel_target(event)
+    while node is not None:
+        for fr in list(_WHEEL_FRAMES):
+            if node is fr.inner or node is fr.canvas:
+                return fr._on_wheel(event)
+        try:
+            node = node.master
+        except (tk.TclError, AttributeError):
+            node = None
+    return None
+
+
 class ScrollFrame(tk.Frame):
     """竖向滚动容器，往 .inner 里放东西。"""
 
@@ -338,8 +368,16 @@ class ScrollFrame(tk.Frame):
         self._pad = padding
         self.inner.bind("<Configure>", self._sync_region)
         self.canvas.bind("<Configure>", self._sync_width)
-        self.canvas.bind("<Enter>", self._bind_wheel)
-        self.canvas.bind("<Leave>", self._unbind_wheel)
+
+        # 滚轮不依赖鼠标先点一下：注册到全局分发器，指针落在内部任意控件上都能滚
+        _WHEEL_FRAMES.append(self)
+        self.bind("<Destroy>", self._unregister_wheel, add="+")
+        global _WHEEL_HOOKED
+        if not _WHEEL_HOOKED:
+            self.bind_all("<MouseWheel>", _wheel_dispatch, add="+")
+            self.bind_all("<Button-4>", _wheel_dispatch, add="+")
+            self.bind_all("<Button-5>", _wheel_dispatch, add="+")
+            _WHEEL_HOOKED = True
 
     def _sync_region(self, _=None):
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
@@ -349,16 +387,37 @@ class ScrollFrame(tk.Frame):
             self._win,
             width=max(1, event.width - self._pad[0] * 2 - self._gap))
 
-    def _bind_wheel(self, _=None):
-        self.canvas.bind_all("<MouseWheel>", self._on_wheel)
-
-    def _unbind_wheel(self, _=None):
-        self.canvas.unbind_all("<MouseWheel>")
+    def _unregister_wheel(self, event=None):
+        if event is not None and event.widget is not self:
+            return
+        try:
+            _WHEEL_FRAMES.remove(self)
+        except ValueError:
+            pass
 
     def _on_wheel(self, event):
-        if self.inner.winfo_reqheight() <= self.canvas.winfo_height():
-            return
-        self.canvas.yview_scroll(int(-event.delta / 120) * 3, "units")
+        try:
+            if self.inner.winfo_reqheight() <= self.canvas.winfo_height():
+                return None
+        except tk.TclError:
+            return None
+
+        num = getattr(event, "num", None)
+        if num == 4:
+            lines = -3
+        elif num == 5:
+            lines = 3
+        else:
+            delta = getattr(event, "delta", 0) or 0
+            if delta == 0:
+                return None
+            step = max(1, int(round(abs(delta) / 120.0 * 3)))
+            lines = -step if delta > 0 else step
+        try:
+            self.canvas.yview_scroll(lines, "units")
+        except tk.TclError:
+            return None
+        return "break"
 
     def to_bottom(self):
         """滚到底。
