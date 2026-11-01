@@ -27,3 +27,7 @@ error.log
 .idea/
 .DS_Store
 Thumbs.db
+
+# 本地截图与验收报告（docs/ 里的展示图除外）
+test/shot_*.png
+test/live_report.md
