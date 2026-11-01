@@ -6,7 +6,7 @@
 
 纯 Python 标准库实现（Python 3.10 + tkinter），**零第三方依赖**，不联网上传任何内容，不写注册表。
 
-- 仓库：<https://gitee.com/linhaonan126/qingti>
+- 仓库：<https://github.com/guli126/qingti>
 - 许可：[MIT](LICENSE)
 
 ---
@@ -66,7 +66,7 @@
 需要 **Python 3.10 或更高**，且带 tkinter（Windows 官方安装包自带）。
 
 ```bash
-git clone https://gitee.com/linhaonan126/qingti.git
+git clone https://github.com/guli126/qingti.git
 cd qingti
 python app.py
 ```
