@@ -31,3 +31,6 @@ Thumbs.db
 # 本地截图与验收报告（docs/ 里的展示图除外）
 test/shot_*.png
 test/live_report.md
+
+# 宣传片素材与成片（体积大，只在本地）
+video/
