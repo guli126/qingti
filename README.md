@@ -84,6 +84,52 @@ python -m PyInstaller --clean --noconfirm 轻提.spec
 
 > 未签名的自编译程序首次运行会被 Windows SmartScreen 拦一下：点「更多信息」→「仍要运行」。
 
+### 方式三：丢给 AI 智能体，让它自己装好跑起来
+
+不想碰命令行？把下面**整段**复制给任意能执行命令的 AI 智能体（Claude Code、Cursor、Codex、通义灵码、Cline 都行），它会自己判断环境、装依赖、跑起来，出问题也知道该看哪儿。
+
+```text
+请在我这台电脑上把开源桌面软件「轻提」装好并跑起来，全程你自己执行命令，不要让我手敲。
+
+仓库：https://github.com/guli126/qingti
+系统：Windows（如果不是 Windows，请先说明差异再决定怎么做）
+
+一、环境自检（先做，把结果贴出来）
+1. python --version          需要 >= 3.10
+2. python -c "import tkinter; print('tk ok')"   必须能打印 tk ok
+   如果上一步失败：说明这台机器的 Python 是精简版，提示我装 python.org 官方版并勾选 tcl/tk
+3. git --version
+
+二、装源码版（默认走这条）
+1. git clone https://github.com/guli126/qingti.git
+2. cd qingti
+3. python app.py
+   - 成功标准：弹出 1180x760 左右的白色主窗口，标题栏有「轻提」，无异常弹窗
+   - 关掉窗口后，检查 %LOCALAPPDATA%\轻提\error.log 是否存在且内容为空
+
+三、可选：打成单文件 exe（我说要再做）
+1. pip install pyinstaller
+2. python -m PyInstaller --clean --noconfirm 轻提.spec
+3. 产物：dist\轻提.exe，双击能起窗口即算成功
+4. 目标机器不需要装 Python
+
+四、绝对不要做的事
+- 不要改动任何 prompts\*.md（那是用户自己的模板）
+- 不要读写 %LOCALAPPDATA%\轻提\config.json（里面有用户密钥）
+- 不要动「文档\轻提	asks.json」（用户聊天记录）
+- 不要提交、粘贴、记录任何 API Key
+- 不要为了“跑通”去改核心代码；报错就原样贴出来问我
+
+五、结束时给我一段结论
+- 用的是哪条路（源码 / exe）
+- Python 版本、是否带 tkinter
+- 启动是否成功、窗口尺寸
+- 如果失败：完整报错 + 你判断的原因 + 下一步建议
+```
+
+把这段丢给智能体后，它一般会先探测环境再动手；跑完你会拿到一个能双击打开的主界面。第一次进「AI 配置」填自己的接口地址和密钥就能用（配置方法见下一节）。
+
+
 ---
 
 ## 配置
