@@ -47,49 +47,54 @@ DARK_CARD = (30, 39, 58)
 GOLD = (255, 214, 102)
 
 FPS = 30
-LEAD = 0.55
-TAIL = 0.80
+LEAD = 0.45
+TAIL = 0.60
 XF = 0.60
 
 AR = 1.596
 AR_EDITOR = 1.474
 
 # 每个元素统一用“出现时刻 + 时长”来驱动
+NOTICE_LINES = [
+    "由于本人懒得进行视频的制作与录音，",
+    "故本视频 100% 由 AI 生成；",
+    "软件完全开源，下载链接放在简介或评论区。",
+]
+
 SCENES = [
-    dict(key="hook", beats=[
-        ("同一句话", 1.9),
-        ("交给两个 AI", 1.9),
-        ("能问出十种结果", 2.6),
+    dict(key="notice", lines=[], fixed=4.6),
+    dict(key="hook", lines=[
+        "同一句话，交给两个 AI。",
+        "能问出十种结果。",
+        "不是 AI 笨，是你没把话说清楚。",
     ]),
-    dict(key="pain", beats=[
-        ("不是 AI 笨", 1.8),
-        ("是你没把话说清楚", 2.4),
-        ("用在哪？给谁看？什么算做完？", 3.2),
+    dict(key="pain", lines=[
+        "难的不是措辞。",
+        "是你根本不知道自己漏了什么。",
+        "用在哪、给谁看、什么算做完。",
     ]),
-    dict(key="intro", beats=[
-        ("轻提 · 本地提示词优化器", 2.8),
-        ("你说一句大白话", 2.0),
-        ("它先反问你", 2.2),
+    dict(key="intro", lines=[
+        "轻提，本地的提示词优化器。",
+        "你说一句大白话，它先反问你。",
     ]),
-    dict(key="ask", beats=[
-        ("问题都是选择题", 2.2),
-        ("每题都标好了推荐项", 2.6),
-        ("懒得答，就点「就这些，开始吧」", 3.4),
+    dict(key="ask", lines=[
+        "问题都是选择题，能点的不用打字。",
+        "每题都标好了推荐项。",
+        "懒得答，就点一下「就这些，开始吧」。",
     ]),
-    dict(key="result", beats=[
-        ("三十秒后，拿到提示词", 2.4),
-        ("目标 / 场景 / 约束 / 验收标准", 3.2),
-        ("复制就能用", 2.0),
+    dict(key="result", lines=[
+        "几秒后，你拿到分好节的提示词。",
+        "目标、场景、约束、验收标准。",
+        "复制就能用。",
     ]),
-    dict(key="modes", beats=[
-        ("编程 / 办公 / 图像", 2.4),
-        ("一共 13 套模板", 2.4),
-        ("模板是 Markdown，改完即生效", 3.2),
+    dict(key="modes", lines=[
+        "编程、办公、图像，三个场景，十三套模板。",
+        "模板就是 Markdown，改完保存立刻生效。",
     ]),
-    dict(key="outro", beats=[
-        ("不用登录，不联网上传", 2.2),
-        ("双击就能用，不写注册表", 2.4),
-        ("仓库地址见评论区", 2.2),
+    dict(key="outro", lines=[
+        "全部在本机跑，不联网上传。",
+        "MIT 开源，绿色版双击就用。",
+        "地址放在评论区。",
     ]),
 ]
 
@@ -591,7 +596,60 @@ def scene_outro(W, H, vertical):
     return draw
 
 
-BUILDERS = dict(hook=scene_hook, pain=scene_pain, intro=scene_intro,
+def scene_notice(W, H, vertical):
+    bg = bg_for((W, H))
+    margin = int(W * 0.10) if vertical else int(W * 0.17)
+    f_tag = font(int(H * (0.019 if vertical else 0.024)), True)
+    f_body = font(int(H * (0.026 if vertical else 0.033)))
+    # 按可用宽度自动缩字，保证最长那句不贴边
+    probe = ImageDraw.Draw(bg)
+    maxw = W - margin * 2
+    body_size = int(H * (0.026 if vertical else 0.033))
+    while body_size > 14 and max(probe.textlength(x, font=font(body_size))
+                                 for x in NOTICE_LINES) > maxw:
+        body_size -= 2
+    f_body = font(body_size)
+    lh = int(body_size * (1.9 if vertical else 1.85))
+    block_h = lh * len(NOTICE_LINES)
+    top = int(H * (0.34 if vertical else 0.33))
+
+    def draw(t):
+        layer = bg.copy()
+        d = ImageDraw.Draw(layer)
+
+        a0 = anim(t, 0.05, 0.45)
+        tag = "AI 生成声明"
+        tw = d.textlength(tag, font=f_tag)
+        tw_box = tw + int(H * 0.05)
+        th_box = int(H * (0.038 if vertical else 0.046))
+        cx = W / 2
+        y0 = top - int(H * (0.10 if vertical else 0.13))
+        d.rounded_rectangle([cx - tw_box / 2, y0 - th_box / 2,
+                             cx + tw_box / 2, y0 + th_box / 2],
+                            radius=th_box // 2, outline=rgba(GOLD, a0), width=2)
+        d.text((cx, y0), tag, font=f_tag, fill=rgba(GOLD, a0), anchor="mm")
+
+        y = top
+        for i, line in enumerate(NOTICE_LINES):
+            a = anim(t, 0.45 + i * 0.35, 0.5)
+            if a > 0.02:
+                color = WHITE
+                d.text((cx, y + lh / 2 + (1 - a) * 14), line, font=f_body,
+                       fill=rgba(color, a), anchor="mm")
+            y += lh
+
+        # 关键词强调：画在正文下方的细线
+        a2 = anim(t, 1.6, 0.6)
+        if a2 > 0.02:
+            lw = int(W * 0.16 * ease_out(a2))
+            yy = top + lh * len(NOTICE_LINES) + int(H * 0.03)
+            d.rectangle([cx - lw / 2, yy, cx + lw / 2, yy + max(3, int(H * 0.004))],
+                        fill=rgba(ACCENT, a2))
+        return layer
+    return draw
+
+
+BUILDERS = dict(notice=scene_notice, hook=scene_hook, pain=scene_pain, intro=scene_intro,
                 ask=scene_ask, result=scene_result, modes=scene_modes,
                 outro=scene_outro)
 
@@ -610,53 +668,52 @@ def wrap_text(draw, text, f, maxw):
     return lines
 
 
-def draw_beats(layer, W, H, vertical, beats, t_local, T, total):
+def draw_beats(layer, W, H, vertical, lines, durs, t_local, T, total):
+    """字幕按真实配音时长切换。"""
     d = ImageDraw.Draw(layer)
-    # 当前节拍
+    if not lines:
+        bar_y = H - max(6, int(H * 0.006))
+        d.rectangle([0, bar_y, W, H], fill=(255, 255, 255, 26))
+        d.rectangle([0, bar_y, int(W * clamp01(T / total)), H],
+                    fill=rgba(ACCENT, 0.95))
+        return layer
     acc = 0.0
-    idx, local = 0, t_local
-    for i, (_, dur) in enumerate(beats):
+    idx, local = len(lines) - 1, lines and durs[-1] or 0
+    for i, dur in enumerate(durs):
         if t_local < acc + dur:
             idx, local = i, t_local - acc
             break
         acc += dur
-    else:
-        idx, local = len(beats) - 1, beats[-1][1]
 
-    text = beats[idx][0]
-    a = anim(local, 0.0, 0.30)
-    rise = (1 - a) * 18
+    text = lines[min(idx, len(lines) - 1)]
+    a = anim(local, 0.0, 0.28)
+    rise = (1 - a) * 16
 
     size = int(H * (0.030 if vertical else 0.036))
     f = font(size, True)
     maxw = int(W * (0.86 if vertical else 0.78))
-    lines = wrap_text(d, text, f, maxw)
+    out = wrap_text(d, text, f, maxw)
     lh = int(size * 1.45)
-    block_h = lh * len(lines)
+    block_h = lh * len(out)
 
     y_center = int(H * (0.855 if vertical else 0.885))
     x_center = W / 2
 
-    # 底板
     pad_x, pad_y = int(size * 1.1), int(size * 0.55)
-    tw = max(d.textlength(ln, font=f) for ln in lines)
+    tw = max(d.textlength(ln, font=f) for ln in out)
     bw = tw + pad_x * 2
     bh = block_h + pad_y * 2
     d.rounded_rectangle([x_center - bw / 2, y_center - bh / 2 + rise,
                          x_center + bw / 2, y_center + bh / 2 + rise],
                         radius=int(bh * 0.22), fill=(8, 11, 18, int(210 * a)))
-
-    # 左侧强调条
     d.rounded_rectangle([x_center - bw / 2 + 10, y_center - bh / 2 + rise + 14,
                          x_center - bw / 2 + 16, y_center + bh / 2 + rise - 14],
                         radius=3, fill=rgba(ACCENT, a))
-
     ty = y_center - block_h / 2 + rise
-    for ln in lines:
+    for ln in out:
         d.text((x_center, ty + lh / 2), ln, font=f, fill=rgba(WHITE, a), anchor="mm")
         ty += lh
 
-    # 进度条 + 段落小圆点
     bar_y = H - max(6, int(H * 0.006))
     d.rectangle([0, bar_y, W, H], fill=(255, 255, 255, 26))
     d.rectangle([0, bar_y, int(W * clamp01(T / total)), H], fill=rgba(ACCENT, 0.95))
@@ -664,32 +721,38 @@ def draw_beats(layer, W, H, vertical, beats, t_local, T, total):
 
 
 # ------------------------------------------------------------------ 配音
-def tts_all(texts):
-    os.makedirs(TTS, exist_ok=True)
+VOICE = "zh-CN-XiaoxiaoNeural"
+VOICE_RATE = "+12%"
+VOICE_PITCH = "+0Hz"
+GAP = 0.12          # 句间停顿
+
+
+def _hash(text):
+    import hashlib
+    key = "%s|%s|%s|%s" % (VOICE, VOICE_RATE, VOICE_PITCH, text)
+    return hashlib.md5(key.encode("utf-8")).hexdigest()[:16]
+
+
+def tts(text):
+    """edge-tts 合成一句，返回 wav 路径（带缓存）。"""
     import edge_tts
 
-    async def one(i, text):
-        mp3 = os.path.join(TTS, "n%d.mp3" % i)
-        wav = os.path.join(TTS, "n%d.wav" % i)
-        txt = os.path.join(TTS, "n%d.txt" % i)
-        io.open(txt, "w", encoding="utf-8").write(text)
-        fresh = (not os.path.exists(wav)
-                 or os.path.getmtime(wav) < os.path.getmtime(txt))
-        if fresh:
-            c = edge_tts.Communicate(text, VOICE, rate=VOICE_RATE)
+    os.makedirs(TTS, exist_ok=True)
+    base = os.path.join(TTS, _hash(text))
+    mp3, wav = base + ".mp3", base + ".wav"
+    if not os.path.exists(wav):
+        async def go():
+            c = edge_tts.Communicate(text, VOICE, rate=VOICE_RATE,
+                                     pitch=VOICE_PITCH)
             await c.save(mp3)
-            subprocess.run([FF, "-y", "-hide_banner", "-loglevel", "error",
-                            "-i", mp3, "-ar", "44100", "-ac", "1", wav],
-                           check=True)
-        return wav
-
-    async def main():
-        out = []
-        for i, t in enumerate(texts, 1):
-            out.append(await one(i, t))
-        return out
-
-    return asyncio.run(main())
+        asyncio.run(go())
+        subprocess.run([FF, "-y", "-hide_banner", "-loglevel", "error",
+                        "-i", mp3, "-ar", "44100", "-ac", "1", wav], check=True)
+        try:
+            os.remove(mp3)
+        except OSError:
+            pass
+    return wav
 
 
 def duration(path):
@@ -698,14 +761,14 @@ def duration(path):
     for line in out.splitlines():
         if "Duration:" in line:
             hms = line.split("Duration:")[1].split(",")[0].strip()
-            h, m, s = hms.split(":")
-            return int(h) * 3600 + int(m) * 60 + float(s)
+            h, m, sec = hms.split(":")
+            return int(h) * 3600 + int(m) * 60 + float(sec)
     raise RuntimeError("probe failed: " + path)
 
 
 # ------------------------------------------------------------------ 背景垫乐
 def make_ambient(total, path):
-    """纯 Python 合成一段极简垫乐（无版权问题），音量很低，只托个氛围。"""
+    """纯 Python 合成一段极简垫乐（无版权问题），垫在人声下面。"""
     import array
     import struct
 
@@ -722,8 +785,7 @@ def make_ambient(total, path):
             lfo = 0.82 + 0.18 * math.sin(2 * math.pi * 0.07 * t + f)
             v += amp * lfo * math.sin(2 * math.pi * f * t)
         seed = (1103515245 * seed + 12345) & 0x7FFFFFFF
-        rnd = (seed / 0x7FFFFFFF) - 0.5
-        noise = noise * 0.995 + rnd * 0.005
+        noise = noise * 0.995 + ((seed / 0x7FFFFFFF) - 0.5) * 0.005
         v = v * 0.16 + noise * 0.5
         fade = min(1.0, t / 1.2, max(0.0, (total - t) / 1.5))
         buf[i] = int(max(-1.0, min(1.0, v * fade)) * 9000)
@@ -744,21 +806,36 @@ def make(orientation):
     W, H = (1080, 1920) if vertical else (1920, 1080)
     tag = "v" if vertical else "h"
 
-    print("[%s] 1/4 排时间轴…" % tag)
-    scene_len = [sum(d for _, d in sc["beats"]) + SCENE_TAIL for sc in SCENES]
-    starts = []
-    t = 0.0
+    print("[%s] 1/5 配音（%s %s）…" % (tag, VOICE, VOICE_RATE))
+    beat_wavs, beat_durs = [], []
+    for sc in SCENES:
+        if sc.get("fixed"):
+            beat_wavs.append([])
+            beat_durs.append([sc["fixed"]])
+            print("    %-6s 固定 %.1fs" % (sc["key"], sc["fixed"]))
+            continue
+        ws, ds = [], []
+        for line in sc["lines"]:
+            w = tts(line)
+            ws.append(w)
+            ds.append(duration(w) + GAP)
+        beat_wavs.append(ws)
+        beat_durs.append(ds)
+        print("    %-6s %s" % (sc["key"], " / ".join("%.1f" % d for d in ds)))
+
+    scene_len = [ds[0] if SCENES[i].get("fixed") else LEAD + sum(ds) + TAIL
+                 for i, ds in enumerate(beat_durs)]
+    starts, t = [], 0.0
     for i in range(len(SCENES)):
         if i:
             t += scene_len[i - 1] - XF
         starts.append(t)
     total = starts[-1] + scene_len[-1]
-    print("    段落长度:", ["%.1f" % x for x in scene_len])
+    print("    总长 %.1fs" % total)
 
-    print("[%s] 2/4 逐帧渲染 %d 帧…" % (tag, int(total * FPS)))
+    print("[%s] 2/5 逐帧渲染 %d 帧…" % (tag, int(total * FPS)))
     draws = [BUILDERS[s["key"]](W, H, vertical) for s in SCENES]
     frames = int(total * FPS)
-
     os.makedirs(OUT, exist_ok=True)
     video = os.path.join(OUT, "_%s_silent.mp4" % tag)
     proc = subprocess.Popen(
@@ -777,9 +854,9 @@ def make(orientation):
         nxt = idx + 1
         if nxt < len(SCENES) and T > starts[nxt] - XF:
             w = clamp01((T - (starts[nxt] - XF)) / XF)
-            img2 = draws[nxt](T - starts[nxt])
-            img = Image.blend(img, img2, w)
-        draw_beats(img, W, H, vertical, SCENES[idx]["beats"],
+            img = Image.blend(img, draws[nxt](T - starts[nxt]), w)
+        sc = SCENES[idx]
+        draw_beats(img, W, H, vertical, sc["lines"], beat_durs[idx],
                    T - starts[idx], T, total)
         proc.stdin.write(img.convert("RGB").tobytes())
         if fi % 300 == 0:
@@ -789,21 +866,49 @@ def make(orientation):
     if proc.returncode:
         raise SystemExit("ffmpeg encode failed")
 
-    print("[%s] 3/4 垫乐…" % tag)
-    wav = os.path.join(OUT, "_%s_pad.wav" % tag)
-    make_ambient(total, wav)
+    print("[%s] 3/5 铺人声…" % tag)
+    inputs, filters, mix_labels = [], [], []
+    k = 0
+    for i, ws in enumerate(beat_wavs):
+        if not ws:
+            continue
+        pos = starts[i] + LEAD
+        for w, dur in zip(ws, beat_durs[i]):
+            inputs += ["-i", w]
+            ms = int(pos * 1000)
+            filters.append("[%d:a]aresample=44100,adelay=%d|%d,apad=whole_dur=%.2f[v%d]"
+                           % (k, ms, ms, total, k))
+            mix_labels.append("[v%d]" % k)
+            pos += dur
+            k += 1
+    filters.append("%samix=inputs=%d:normalize=0:duration=longest,"
+                   "loudnorm=I=-16:TP=-1.5:LRA=11,aresample=44100[voice]"
+                   % ("".join(mix_labels), k))
 
-    print("[%s] 4/4 合成…" % tag)
+    print("[%s] 4/5 垫乐 + 混音…" % tag)
+    pad = os.path.join(OUT, "_%s_pad.wav" % tag)
+    make_ambient(total, pad)
+    inputs += ["-i", pad]
+    filters.append("[%d:a]aresample=44100,volume=0.16[pad]" % k)
+    filters.append("[voice][pad]amix=inputs=2:normalize=0:duration=first,"
+                   "alimiter=limit=0.97[aout]" % ())
+    m4a = os.path.join(OUT, "_%s_audio.m4a" % tag)
+    subprocess.run([FF, "-y", "-hide_banner", "-loglevel", "error", *inputs,
+                    "-filter_complex", ";".join(filters), "-map", "[aout]",
+                    "-c:a", "aac", "-b:a", "192k", "-t", "%.2f" % total,
+                    m4a], check=True)
+
+    print("[%s] 5/5 合成…" % tag)
     name = ("轻提-宣传片-竖版1080x1920.mp4" if vertical
             else "轻提-宣传片-横版1920x1080.mp4")
     final = os.path.join(OUT, name)
     subprocess.run([FF, "-y", "-hide_banner", "-loglevel", "error",
-                    "-i", video, "-i", wav, "-map", "0:v", "-map", "1:a",
-                    "-c:v", "copy", "-c:a", "aac", "-b:a", "128k",
-                    "-af", "loudnorm=I=-30:TP=-6,aresample=44100",
-                    "-shortest", "-movflags", "+faststart", final], check=True)
+                    "-i", video, "-i", m4a, "-map", "0:v", "-map", "1:a",
+                    "-c:v", "copy", "-c:a", "copy", "-shortest",
+                    "-movflags", "+faststart", final], check=True)
     os.remove(video)
-    os.remove(wav)
+    os.remove(m4a)
+    os.remove(pad)
     print("    成片：%s  %.1fs" % (final, total))
     return final, total
 
